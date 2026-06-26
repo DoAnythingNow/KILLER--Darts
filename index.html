@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Killer Darts</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --card: #0f3460;
+      --accent: #e94560;
+      --gold: #f5a623;
+      --green: #27ae60;
+      --text: #eaeaea;
+      --muted: #7f8c8d;
+      --killer-bg: #7b0000;
+      --killer-border: #e94560;
+      --out-bg: #2c2c2c;
+      --radius: 14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--accent);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    #btn-reset {
+      background: transparent;
+      border: 1px solid var(--muted);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    #btn-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── SCREENS ── */
+    .screen { display: none; flex: 1; padding: 20px; max-width: 700px; margin: 0 auto; width: 100%; }
+    .screen.active { display: flex; flex-direction: column; gap: 16px; }
+
+    h2 { font-size: 1.2rem; color: var(--gold); text-align: center; margin-bottom: 4px; }
+    p.sub { text-align: center; color: var(--muted); font-size: 0.9rem; }
+
+    /* ── FORMS ── */
+    .form-grid { display: flex; flex-direction: column; gap: 10px; }
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+    .form-row label { color: var(--gold); font-weight: 700; font-size: 1rem; min-width: 28px; }
+    .form-row input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--muted);
+      color: var(--text);
+      font-size: 1rem;
+      padding: 4px 2px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-row input:focus { border-bottom-color: var(--accent); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: opacity 0.2s, transform 0.1s;
+      text-transform: uppercase;
+    }
+    .btn-primary:active { transform: scale(0.97); opacity: 0.85; }
+
+    /* Number picker row */
+    .num-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+    .num-row .player-name-label {
+      flex: 1;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .num-picker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .num-picker button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: var(--card);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .num-picker button:active { background: var(--accent); }
+    .num-picker .num-display {
+      min-width: 36px;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    /* ── GAME SCREEN ── */
+    #screen-game { gap: 12px; }
+
+    .player-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      border: 2px solid transparent;
+      transition: background 0.3s, border-color 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .player-card.is-killer {
+      background: var(--killer-bg);
+      border-color: var(--killer-border);
+      animation: pulseKiller 2s ease-in-out infinite;
+    }
+    .player-card.is-out {
+      background: var(--out-bg);
+      opacity: 0.55;
+      border-color: #444;
+    }
+
+    @keyframes pulseKiller {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(233,69,96,0); }
+      50%       { box-shadow: 0 0 18px 4px rgba(233,69,96,0.45); }
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .player-name {
+      font-size: 1.2rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .player-number {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .player-card.is-killer .player-number { color: var(--accent); }
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: var(--muted);
+      color: #fff;
+    }
+    .player-card.is-killer .status-badge {
+      background: var(--accent);
+      animation: pulseBadge 1s ease-in-out infinite;
+    }
+    .player-card.is-out .status-badge { background: #555; }
+
+    @keyframes pulseBadge {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.6; }
+    }
+
+    .card-body { display: flex; flex-direction: column; gap: 10px; }
+
+    /* Own hits row */
+    .hits-row, .lives-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .row-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      min-width: 56px;
+    }
+    .dots {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }
+    .dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--muted);
+      background: transparent;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .dot.filled {
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .dot.filled.killer-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Hearts / lives */
+    .heart {
+      font-size: 1.1rem;
+      transition: opacity 0.2s;
+    }
+    .heart.lost { opacity: 0.15; }
+
+    /* Counter buttons */
+    .counter-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .counter-btn:active { transform: scale(0.88); }
+    .counter-btn:disabled { opacity: 0.25; cursor: default; }
+
+    .btn-plus  { background: var(--green);  color: #fff; }
+    .btn-minus { background: #444; color: var(--text); }
+
+    .hits-row .btn-plus  { background: var(--green); }
+    .player-card.is-killer .hits-row .btn-plus { background: #555; }
+
+    /* ── WINNER BANNER ── */
+    #winner-banner {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+    }
+    #winner-banner.show { display: flex; }
+    #winner-banner h2 {
+      font-size: 2rem;
+      color: var(--gold);
+      text-align: center;
+    }
+    #winner-banner .winner-name {
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--accent);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+    }
+    #winner-banner button {
+      margin-top: 10px;
+    }
+
+    /* ── LEGEND ── */
+    .legend {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .legend strong { color: var(--text); }
+
+    @media (min-width: 500px) {
+      .player-card { padding: 18px 20px; }
+      .player-name { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎯 Killer Darts</h1>
+  <button id="btn-reset">New Game</button>
+</header>
+
+<!-- SCREEN 1: Enter Names -->
+<div id="screen-names" class="screen active">
+  <h2>Enter Player Names</h2>
+  <p class="sub">5 players — enter in throwing order</p>
+  <div class="form-grid" id="names-form"></div>
+  <button class="btn-primary" id="btn-to-numbers">Next: Choose Numbers →</button>
+</div>
+
+<!-- SCREEN 2: Enter Numbers -->
+<div id="screen-numbers" class="screen">
+  <h2>Set Player Numbers</h2>
+  <p class="sub">Each player throws left-handed — record where they land</p>
+  <div class="form-grid" id="numbers-form"></div>
+  <button class="btn-primary" id="btn-start-game">Start Game →</button>
+</div>
+
+<!-- SCREEN 3: Game -->
+<div id="screen-game" class="screen">
+  <div class="legend">
+    <strong>Building:</strong> tap ＋ on Hits when player scores their own number (need 3).<br>
+    <strong>Killer (red):</strong> tap ＋/− on Lives to track attacks on other players.<br>
+    <strong>Hit own number as killer?</strong> Tap − on Hits to drop back.
+  </div>
+  <div id="cards-container"></div>
+</div>
+
+<!-- WINNER OVERLAY -->
+<div id="winner-banner">
+  <h2>🏆 Winner!</h2>
+  <div class="winner-name" id="winner-name"></div>
+  <button class="btn-primary" id="btn-play-again" style="width:200px">Play Again</button>
+</div>
+
+<script>
+  const MAX_LIVES = 3;
+  const MAX_HITS  = 3;
+  const PLAYER_COUNT = 5;
+
+  let players = [];
+
+  // ── Utilities ──────────────────────────────────────────────
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+  // ── Screen 1: Names ────────────────────────────────────────
+  function buildNamesForm() {
+    const form = document.getElementById('names-form');
+    form.innerHTML = '';
+    for (let i = 0; i < PLAYER_COUNT; i++) {
+      const row = document.createElement('div');
+      row.className = 'form-row';
+      row.innerHTML = `
+        <label>${i + 1}.</label>
+        <input type="text" id="name-${i}" placeholder="Player ${i + 1}" maxlength="20" autocomplete="off" />
+      `;
+      form.appendChild(row);
+    }
+    document.getElementById(`name-0`).focus();
+  }
+
+  document.getElementById('btn-to-numbers').addEventListener('click', () => {
+    const names = [];
+    for (let i = 0; i < PLAYER_COUNT; i++) {
+      const val = document.getElementById(`name-${i}`).value.trim();
+      names.push(val || `Player ${i + 1}`);
+    }
+    buildNumbersForm(names);
+    show('screen-numbers');
+  });
+
+  // ── Screen 2: Numbers ──────────────────────────────────────
+  function buildNumbersForm(names) {
+    const form = document.getElementById('numbers-form');
+    form.innerHTML = '';
+    names.forEach((name, i) => {
+      const row = document.createElement('div');
+      row.className = 'num-row';
+      row.innerHTML = `
+        <span class="player-name-label">${name}</span>
+        <div class="num-picker">
+          <button data-idx="${i}" data-dir="-1" class="num-btn">◀</button>
+          <span class="num-display" id="num-display-${i}">1</span>
+          <button data-idx="${i}" data-dir="1" class="num-btn">▶</button>
+        </div>
+      `;
+      form.appendChild(row);
+    });
+
+    // Store names temporarily on form dataset
+    form.dataset.names = JSON.stringify(names);
+
+    form.querySelectorAll('.num-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = +btn.dataset.idx;
+        const dir = +btn.dataset.dir;
+        const display = document.getElementById(`num-display-${idx}`);
+        let val = parseInt(display.textContent) + dir;
+        if (val < 1)  val = 20;
+        if (val > 20) val = 1;
+        display.textContent = val;
+      });
+    });
+  }
+
+  document.getElementById('btn-start-game').addEventListener('click', () => {
+    const form = document.getElementById('numbers-form');
+    const names = JSON.parse(form.dataset.names);
+    players = names.map((name, i) => ({
+      name,
+      number: parseInt(document.getElementById(`num-display-${i}`).textContent),
+      ownHits: 0,   // 0-3, 3 = killer
+      lives: MAX_LIVES,
+    }));
+    renderGame();
+    show('screen-game');
+  });
+
+  // ── Screen 3: Game ─────────────────────────────────────────
+  function isKiller(p)  { return p.ownHits >= MAX_HITS && p.lives > 0; }
+  function isOut(p)     { return p.lives <= 0; }
+
+  function renderGame() {
+    const container = document.getElementById('cards-container');
+    container.innerHTML = '';
+    players.forEach((p, i) => renderCard(container, p, i));
+    checkWinner();
+  }
+
+  function renderCard(container, p, i) {
+    const killer = isKiller(p);
+    const out    = isOut(p);
+
+    const card = document.createElement('div');
+    card.className = `player-card${killer ? ' is-killer' : ''}${out ? ' is-out' : ''}`;
+    card.id = `card-${i}`;
+
+    const statusText = out ? 'OUT' : killer ? 'KILLER!' : 'Building...';
+
+    // Dots for own hits
+    let dotsHtml = '';
+    for (let d = 0; d < MAX_HITS; d++) {
+      const filled = d < p.ownHits;
+      dotsHtml += `<div class="dot${filled ? ' filled' + (killer ? ' killer-dot' : '') : ''}"></div>`;
+    }
+
+    // Hearts for lives
+    let heartsHtml = '';
+    for (let l = 0; l < MAX_LIVES; l++) {
+      heartsHtml += `<span class="heart${l >= p.lives ? ' lost' : ''}">❤️</span>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="player-name">${p.name}</span>
+        <span class="status-badge">${statusText}</span>
+        <span class="player-number">${p.number}</span>
+      </div>
+      <div class="card-body">
+        <div class="hits-row">
+          <span class="row-label">Hits</span>
+          <div class="dots">${dotsHtml}</div>
+          <button class="counter-btn btn-minus"
+            data-action="hits-minus" data-idx="${i}"
+            ${p.ownHits <= 0 || out ? 'disabled' : ''}>−</button>
+          <button class="counter-btn btn-plus"
+            data-action="hits-plus" data-idx="${i}"
+            ${p.ownHits >= MAX_HITS || out ? 'disabled' : ''}>＋</button>
+        </div>
+        <div class="lives-row">
+          <span class="row-label">Lives</span>
+          <div class="dots">${heartsHtml}</div>
+          <button class="counter-btn btn-minus"
+            data-action="lives-minus" data-idx="${i}"
+            ${p.lives <= 0 || out ? 'disabled' : ''}>−</button>
+          <button class="counter-btn btn-plus"
+            data-action="lives-plus" data-idx="${i}"
+            ${p.lives >= MAX_LIVES ? 'disabled' : ''}>＋</button>
+        </div>
+      </div>
+    `;
+
+    card.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', handleAction);
+    });
+
+    container.appendChild(card);
+  }
+
+  function handleAction(e) {
+    const btn    = e.currentTarget;
+    const action = btn.dataset.action;
+    const idx    = +btn.dataset.idx;
+    const p      = players[idx];
+
+    switch (action) {
+      case 'hits-plus':
+        p.ownHits = clamp(p.ownHits + 1, 0, MAX_HITS);
+        break;
+      case 'hits-minus':
+        p.ownHits = clamp(p.ownHits - 1, 0, MAX_HITS);
+        break;
+      case 'lives-minus':
+        p.lives = clamp(p.lives - 1, 0, MAX_LIVES);
+        break;
+      case 'lives-plus':
+        p.lives = clamp(p.lives + 1, 0, MAX_LIVES);
+        break;
+    }
+
+    // Re-render just this card
+    const container = document.getElementById('cards-container');
+    const old = document.getElementById(`card-${idx}`);
+    const tmp  = document.createElement('div');
+    renderCard(tmp, p, idx);
+    container.replaceChild(tmp.firstChild, old);
+
+    checkWinner();
+  }
+
+  function checkWinner() {
+    const alive = players.filter(p => !isOut(p));
+    if (alive.length === 1) {
+      document.getElementById('winner-name').textContent = alive[0].name;
+      document.getElementById('winner-banner').classList.add('show');
+    }
+  }
+
+  // ── Reset ──────────────────────────────────────────────────
+  function resetGame() {
+    players = [];
+    document.getElementById('winner-banner').classList.remove('show');
+    buildNamesForm();
+    show('screen-names');
+  }
+
+  document.getElementById('btn-reset').addEventListener('click', resetGame);
+  document.getElementById('btn-play-again').addEventListener('click', resetGame);
+
+  // ── Boot ───────────────────────────────────────────────────
+  buildNamesForm();
+</script>
+</body>
+</html>
